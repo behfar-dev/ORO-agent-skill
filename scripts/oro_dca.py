@@ -12,6 +12,7 @@ Examples:
     --announce --channel telegram --to "chat_id"
 """
 
+import utils.session
 import os
 import sys
 import json
