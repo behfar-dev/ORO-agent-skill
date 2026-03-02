@@ -1,98 +1,103 @@
 # DCA Agent
 
-Auto-buy gold on a schedule (Dollar Cost Averiting).
+Auto-buy gold on a schedule (Dollar Cost Averaging). OpenClaw cron compatible.
 
-## Concept
+## OpenClaw Cron Integration
 
-The agent buys a fixed gold amount at regular intervals, averaging out price over time.
+### Option 1: Isolated Cron Job (Recommended)
 
-## Use Cases
-
-- Agent salary savings (agent earns USDC → auto-converts to gold)
-- User DCA into gold (set & forget)
-- Agent treasury accumulation
-
-## Implementation
-
-### 1. Estimate Cost
-
-```python
-def estimate_dca_cost(agent: OroGoldAgent, gold_amount: float) -> dict:
-    estimate = agent.estimate_buy(gold_amount)
-    return {
-        "gold": gold_amount,
-        "usdc_cost": estimate["estimatedUsdcAmount"],
-        "price_per_oz": estimate["goldPricePerOunce"]
-    }
+```bash
+# Daily DCA at 9am - announce to Telegram
+openclaw cron add \
+  --name "Daily Gold DCA" \
+  --cron "0 9 * * *" \
+  --tz "UTC" \
+  --session isolated \
+  --message "Run: python3 /path/to/oro_dca.py --buy 0.1 --status" \
+  --announce \
+  --channel telegram \
+  --to "chat_id"
 ```
 
-### 2. Scheduled Purchase
+### Option 2: HEARTBEAT.md
 
-```python
-import schedule
-import time
+Add to `HEARTBEAT.md`:
 
-def dca_buy(agent: OroGoldAgent, user_id: str, gold_amount: float):
-    # 1. Get estimate
-    estimate = agent.estimate_buy(gold_amount)
-    max_usdc = estimate["estimatedUsdcAmount"] * 1.05  # 5% slippage
-    
-    # 2. Create purchase
-    resp = requests.post(
-        f"{API_BASE}/trading/purchases/user",
-        json={
-            "userId": user_id,
-            "goldAmount": gold_amount,
-            "maxUsdcAmount": max_usdc
-        },
-        headers=agent.headers
-    )
-    
-    # 3. Sign & submit (custodial = partner signs)
-    # ... sign with executive authority
-    
-    return resp.json()
-
-# Schedule daily at 9am
-schedule.every().day.at("09:00").do(
-    lambda: dca_buy(agent, "user-123", 0.01)
-)
-
-while True:
-    schedule.run_pending()
-    time.sleep(60)
+```
+## DCA Check
+- Get gold price: python3 /path/to/oro_dca.py --estimate 0.1
+- Run DCA: python3 /path/to/oro_dca.py --buy 0.1 --status
 ```
 
-### 3. Track Performance
+### Option 3: System Event (Main Session)
 
-```python
-def dca_stats(agent: OroGoldAgent, user_id: str, purchases: list) -> dict:
-    user = agent.get_user(user_id)
-    
-    total_gold = sum(p["gold_amount"] for p in purchases)
-    total_usdc = sum(p["usdc_spent"] for p in purchases)
-    current_value = user["goldBalance"] * agent.get_price()
-    
-    return {
-        "total_gold": total_gold,
-        "total_invested": total_usdc,
-        "current_value": current_value,
-        "gain_loss": current_value - total_usdc,
-        "avg_buy_price": total_usdc / total_gold if total_gold > 0 else 0
-    }
+```bash
+openclaw cron add \
+  --name "DCA Morning" \
+  --cron "0 8 * * *" \
+  --session main \
+  --system-event "Run DCA purchase: execute /path/to/oro_dca.py --buy 0.1" \
+  --wake now
 ```
 
-## Configuration
+## CLI Usage
 
-| Parameter | Description |
-|----------|-------------|
-| `gold_amount` | Grams/oz per purchase |
-| `frequency` | daily, weekly, biweekly, monthly |
-| `slippage_tolerance` | 1-10% (default 5%) |
+```bash
+# Set API key
+export ORO_API_KEY="your-api-key"
 
-## Notes
+# Get price estimate
+python3 oro_dca.py --estimate 0.5
 
-- Requires `PARTNER_EXECUTIVE_AUTHORITY` scope API key
-- For custodial model (partner signs transactions)
-- Store purchase history for tracking
-- Consider max spend limits to prevent overspending
+# Execute a DCA buy
+python3 oro_dca.py --buy 0.5
+
+# Check DCA status
+python3 oro_dca.py --status
+
+# Buy for specific user
+python3 oro_dca.py --buy 0.1 --user-id "user-123"
+
+# Use config file
+python3 oro_dca.py --buy 0.1 --config config.json
+```
+
+## Configuration (config.json)
+
+```json
+{
+  "slippage": 0.05,
+  "history_file": "dca_history.json",
+  "max_daily_spend": 100,
+  "partner_id": "1"
+}
+```
+
+## Python API
+
+```python
+from oro_gold import OroGoldAgent, OroDCA
+
+agent = OroGoldAgent(api_key)
+dca = OroDCA(api_key, {"history_file": "dca.json"})
+
+# Load history
+dca.load_history()
+
+# Estimate
+est = dca.estimate(0.5)
+print(f"Cost: ${est['estimatedUsdcAmount']}")
+
+# Execute
+result = dca.execute_buy(0.5, "user-123")
+
+# Stats
+stats = dca.get_stats()
+print(f"Total: {stats['total_gold']}g, P/L: ${stats['gain_loss']}")
+```
+
+## Concepts
+
+- **Slippage**: Buffer for price movement (default 5%)
+- **History**: Stored in JSON file for tracking
+- **User ID**: Optional - for partner-managed users
