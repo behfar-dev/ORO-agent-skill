@@ -6,6 +6,20 @@ Agent skill for integrating with ORO GRAIL gold infrastructure on Solana.
 
 A reusable skill that lets AI agents work with gold (GRAIL) - check prices, manage balances, buy/sell gold via REST API.
 
+## Install
+
+### Via skills.sh (recommended)
+
+```bash
+npx skills add behfar-dev/ORO-agent-skill
+```
+
+### Manual
+
+```bash
+git clone https://github.com/behfar-dev/ORO-agent-skill.git
+```
+
 ## Quick Start
 
 ```python
