@@ -60,6 +60,7 @@ See `references/` for detailed patterns:
 - `references/balance-checker.md` - Check user gold balance
 - `references/buy-gold.md` - Purchase gold flow
 - `references/sell-gold.md` - Sell gold flow
+- `references/dca-agent.md` - Dollar Cost Averaging agent
 
 ## Key Concepts
 

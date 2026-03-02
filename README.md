@@ -22,6 +22,7 @@ print(f"Gold: ${price}/oz")
 - **Balance Checker** - Query user gold/USDC balances
 - **Buy Gold** - Purchase gold for users or partner treasury
 - **Sell Gold** - Convert gold to USDC
+- **DCA Agent** - Automated gold buying on schedule
 
 ## Documentation
 
